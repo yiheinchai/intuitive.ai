@@ -32,12 +32,14 @@ class ResNet(nn.Module):
     def __init__(self, layers: List[Layer]):
         super().__init__()
 
+        self.relu = nn.ReLU()
+
         # Initial
         self.conv_i = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3)
         self.bn_conv_i = nn.BatchNorm2d(64)
         self.max_pool_i = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.bn_max_i = nn.BatchNorm2d(64)
-        
+
         resnet_layers = []
 
         curr_chan = 64
@@ -62,19 +64,24 @@ class ResNet(nn.Module):
                             j - 1
                         ]  # input is the output of previous layer
 
-                    resnet_block.append(
-                        nn.Conv2d(
+                    conv_name = f"{layer_idx}_{i}_{j}_conv"
+                    bn_name = f"{layer_idx}_{i}_{j}_bn"
+
+                    setattr(self, conv_name, nn.Conv2d(
                             in_chan,  # [64,64,64], [256,64,64] | [256,128,128], [512,128,128]
                             layer.out_chans[j],  # [64,64,256] | [128,128,512]
                             layer.kernel_sizes[j],  # [1,3,1]
                             strides[j],  # [1,1,1] | [1,2,1]
                             layer.paddings[j],  # [0,1,0]
-                        )
+                        ))
+                    resnet_block.append(
+                        conv_name
                     )
-                    resnet_block.append(nn.BatchNorm2d(layer.out_chans[j]))
+                    setattr(self, bn_name, nn.BatchNorm2d(layer.out_chans[j]))
+                    resnet_block.append(bn_name)
 
-                    if j == len(layer.out_chans) - 1:
-                        resnet_block.append(nn.ReLU())
+                    if j < len(layer.out_chans) - 1:
+                        resnet_block.append("relu")
 
                     curr_chan = layer.out_chans[j]
 
@@ -91,9 +98,14 @@ class ResNet(nn.Module):
                         ),
                         nn.BatchNorm2d(curr_chan),
                     ]
-                    resnet_block.append(nn.Sequential(*identity_downsample))
 
-                resnet_block.append(nn.ReLU())
+                    ds_name = f"{layer_idx}_{i}_ds"
+                    setattr(self, ds_name, nn.Sequential(*identity_downsample))
+                    resnet_block.append(ds_name)
+                else:
+                    resnet_block.append(f"{layer_idx}_{i}_identity")
+
+                resnet_block.append("relu")
                 resnet_layers.append(resnet_block)
 
         self.resnet_layers = resnet_layers
@@ -110,22 +122,32 @@ class ResNet(nn.Module):
 
         identity = None
         for b_i, block in enumerate(self.resnet_layers):
-            for i, net in enumerate(block):
+            for i, net_name in enumerate(block):
+                net = getattr(self, net_name, None)
+
                 if i == 0:
                     identity = X
 
-                if isinstance(net, nn.Sequential):
+                if "ds" in net_name:
                     downsampled_identity = net(identity)
                     X += downsampled_identity
                     continue
-                # print(b_i, i, X.shape, net)
+
+                if "identity" in net_name and net is None:
+                    X += identity
+                    continue
+
+                print(b_i, i, X.shape, net)
                 X = net(X)
 
         X = self.avg_pool_e(X)
         # [N, 2048, 1, 1]
+
         X = X.flatten(1,3)
+        # [N, 2048]
+
         X = self.fc(X)
-        # [N, 1000, 1, 1]
+        # [N, 1000]
 
         return X
 
@@ -139,7 +161,7 @@ model = ResNet(
     ]
 )
 
-# %% ../notebooks/resnet.ipynb 8
+# %% ../notebooks/resnet.ipynb 9
 # testing shapes
 img = torch.randn(1, 3, 224, 224)
 res = model(img)
