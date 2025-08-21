@@ -37,7 +37,7 @@ class ResNet(nn.Module):
         self.bn_conv_i = nn.BatchNorm2d(64)
         self.max_pool_i = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.bn_max_i = nn.BatchNorm2d(64)
-
+        
         resnet_layers = []
 
         curr_chan = 64
@@ -72,6 +72,10 @@ class ResNet(nn.Module):
                         )
                     )
                     resnet_block.append(nn.BatchNorm2d(layer.out_chans[j]))
+
+                    if j == len(layer.out_chans) - 1:
+                        resnet_block.append(nn.ReLU())
+
                     curr_chan = layer.out_chans[j]
 
                 #   output         residuals
