@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['resnet_18', 'resnet_34', 'resnet_50', 'resnet_101', 'resnet_152', 'train_transform', 'test_transform', 'train_data',
-           'test_data', 'train_dataloader', 'test_dataloader', 'img', 'res', 'Layer', 'LayerNet', 'ResNet']
+           'test_data', 'train_dataloader', 'test_dataloader', 'img', 'res', 'LayerConfig', 'Layer', 'ResNet']
 
 # %% ../notebooks/resnet.ipynb 1
 import torch
@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
 # %% ../notebooks/resnet.ipynb 6
-class Layer:
+class LayerConfig:
     def __init__(
         self,
         repeats: int,
@@ -35,8 +35,8 @@ class Layer:
         self.paddings = paddings
 
 
-class LayerNet(nn.Module):
-    def __init__(self, layer: Layer, layer_idx: int, prev_layer_chans: int):
+class Layer(nn.Module):
+    def __init__(self, layer: LayerConfig, layer_idx: int, prev_layer_chans: int):
         super().__init__()
 
         curr_chan = prev_layer_chans
@@ -47,7 +47,7 @@ class LayerNet(nn.Module):
         for i in range(layer.repeats):
             strides = (
                 [1] * len(layer.strides) if layer_idx == 0 or i != 0 else layer.strides
-            )  # TODO: remove hardcoding like this
+            ) 
 
             identity_chans = None
 
@@ -130,7 +130,7 @@ class LayerNet(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, layers: List[Layer], output_cats: int = 1000):
+    def __init__(self, layers: List[LayerConfig], output_cats: int = 1000):
         super().__init__()
         self.output_cats = output_cats
         self.layers = layers
@@ -148,7 +148,7 @@ class ResNet(nn.Module):
                 64 if layer_idx == 0 else layers[layer_idx - 1].out_chans[-1]
             )
             setattr(
-                self, f"layer_{layer_idx}", LayerNet(layer, layer_idx, prev_layer_chans)
+                self, f"layer_{layer_idx}", Layer(layer, layer_idx, prev_layer_chans)
             )
 
         # Ending
@@ -179,46 +179,46 @@ class ResNet(nn.Module):
 
 resnet_18 = ResNet(
     [
-        Layer(2, [64, 64], [3, 3], [2, 1], [1, 1]),
-        Layer(2, [128, 128], [3, 3], [2, 1], [1, 1]),
-        Layer(2, [256, 256], [3, 3], [2, 1], [1, 1]),
-        Layer(2, [512, 512], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(2, [64, 64], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(2, [128, 128], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(2, [256, 256], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(2, [512, 512], [3, 3], [2, 1], [1, 1]),
     ]
 )
 
 resnet_34 = ResNet(
     [
-        Layer(3, [64, 64], [3, 3], [2, 1], [1, 1]),
-        Layer(4, [128, 128], [3, 3], [2, 1], [1, 1]),
-        Layer(6, [256, 256], [3, 3], [2, 1], [1, 1]),
-        Layer(3, [512, 512], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(3, [64, 64], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(4, [128, 128], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(6, [256, 256], [3, 3], [2, 1], [1, 1]),
+        LayerConfig(3, [512, 512], [3, 3], [2, 1], [1, 1]),
     ]
 )
 
 resnet_50 = ResNet(
     [
-        Layer(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(4, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(6, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(4, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(6, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
     ]
 )
 
 resnet_101 = ResNet(
     [
-        Layer(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(4, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(23, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(4, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(23, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
     ]
 )
 
 resnet_152 = ResNet(
     [
-        Layer(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(8, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(36, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
-        Layer(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [64, 64, 256], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(8, [128, 128, 512], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(36, [256, 256, 1024], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
+        LayerConfig(3, [512, 512, 2048], [1, 3, 1], [1, 2, 1], [0, 1, 0]),
     ]
 )
 
